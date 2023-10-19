@@ -19,6 +19,12 @@ import (
 // Step ranges - node[1-4/2]
 // The supplied iter function is called per Cartesian product.
 func Expand(pattern string, iter func(s string)) error {
+	if pattern == "" {
+		return fmt.Errorf("empty pattern")
+	}
+	if iter == nil {
+		return fmt.Errorf("iter function nil")
+	}
 	ranges, err := splitInput(pattern)
 	if err != nil {
 		return err

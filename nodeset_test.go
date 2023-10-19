@@ -5,6 +5,66 @@ import (
 	"testing"
 )
 
+func TestExpand(t *testing.T) {
+	type args struct {
+		pattern string
+		iter    func(s string)
+	}
+
+	var output []string
+	funcArg := func(s string) { output = append(output, s) }
+
+	tests := []struct {
+		name    string
+		args    args
+		want    []string
+		wantErr bool
+	}{
+
+		{
+			name: "No range",
+			args: args{pattern: "node1", iter: funcArg},
+			want: []string{"node1"},
+		},
+		{
+			name: "Range value",
+			args: args{pattern: "node[1-2]", iter: funcArg},
+			want: []string{"node1", "node2"},
+		},
+		{
+			name:    "Empty pattern",
+			args:    args{pattern: "", iter: funcArg},
+			want:    []string{},
+			wantErr: true,
+		},
+		{
+			name:    "No iter",
+			args:    args{pattern: "node1", iter: nil},
+			want:    []string{},
+			wantErr: true,
+		},
+		{
+			name:    "Nested left bracket, error passed up from splitInput",
+			args:    args{pattern: "node[[1]", iter: funcArg},
+			want:    []string{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		output = []string{}
+		t.Run(tt.name, func(t *testing.T) {
+			err := Expand(tt.args.pattern, tt.args.iter)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Expand() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(output, tt.want) {
+				t.Errorf("Expand() = %v, want %v", output, tt.want)
+			}
+		})
+	}
+}
+
 func Test_splitInput(t *testing.T) {
 	type args struct {
 		input string
@@ -199,6 +259,12 @@ func Test_parseRange(t *testing.T) {
 		{
 			name:    "Range value with zero padding on end value of great length than start value",
 			args:    args{rangeStr: "[01-004]"},
+			want:    []string{},
+			wantErr: true,
+		},
+		{
+			name:    "Two step delineator error, passing error up from parseStep",
+			args:    args{rangeStr: "[1-4//2]"},
 			want:    []string{},
 			wantErr: true,
 		},
