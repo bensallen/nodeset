@@ -1,6 +1,7 @@
 package nodeset
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -8,11 +9,17 @@ import (
 func TestExpand(t *testing.T) {
 	type args struct {
 		pattern string
-		iter    func(s string)
+		iter    func(s string) error
 	}
 
 	var output []string
-	funcArg := func(s string) { output = append(output, s) }
+	funcArg := func(s string) error {
+		output = append(output, s)
+		return nil
+	}
+	funcErrArg := func(s string) error {
+		return fmt.Errorf("this is an error")
+	}
 
 	tests := []struct {
 		name    string
@@ -46,6 +53,12 @@ func TestExpand(t *testing.T) {
 		{
 			name:    "Nested left bracket, error passed up from splitInput",
 			args:    args{pattern: "node[[1]", iter: funcArg},
+			want:    []string{},
+			wantErr: true,
+		},
+		{
+			name:    "Iter with error",
+			args:    args{pattern: "node[1-2]", iter: funcErrArg},
 			want:    []string{},
 			wantErr: true,
 		},

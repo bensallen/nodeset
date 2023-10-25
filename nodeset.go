@@ -18,7 +18,7 @@ import (
 // Union ranges - node[1-2,5-9]
 // Step ranges - node[1-4/2]
 // The supplied iter function is called per Cartesian product.
-func Expand(pattern string, iter func(s string)) error {
+func Expand(pattern string, iter func(s string) error) error {
 	if pattern == "" {
 		return fmt.Errorf("empty pattern")
 	}
@@ -38,7 +38,10 @@ func Expand(pattern string, iter func(s string)) error {
 		for j, k := range ix {
 			r = append(r, ranges[j][k])
 		}
-		iter(strings.Join(r, ""))
+		err := iter(strings.Join(r, ""))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
