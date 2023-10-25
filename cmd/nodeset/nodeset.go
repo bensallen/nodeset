@@ -20,7 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	printer := func(s string) { fmt.Println(s) }
+	printer := func(s string) error { fmt.Println(s); return nil }
 	err := nodeset.Expand(pattern, printer)
 	if err != nil {
 		fmt.Printf("Error expanding nodeset, %v.\n", err)
