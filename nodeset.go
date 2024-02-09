@@ -8,6 +8,38 @@ import (
 	"strings"
 )
 
+// SplitOnComma will split the input string on commas except for when within square brackets.
+// Used for pre-processing input strings for Expand when such input has multiple node patterns
+// seperated by comma like 'node[1-2],node[5-6]'
+func SplitOnComma(s string) []string {
+	var result []string
+	var buffer strings.Builder
+	inBrackets := 0
+
+	for _, char := range s {
+		switch char {
+		case '[':
+			inBrackets++
+			buffer.WriteRune(char)
+		case ']':
+			inBrackets--
+			buffer.WriteRune(char)
+		case ',':
+			if inBrackets > 0 {
+				buffer.WriteRune(char)
+			} else {
+				result = append(result, buffer.String())
+				buffer.Reset()
+			}
+		default:
+			buffer.WriteRune(char)
+		}
+	}
+
+	result = append(result, buffer.String())
+	return result
+}
+
 // Expand takes a node set pattern like 'node[1-2]', and a function
 // with the signature func(s string). It will parse the pattern
 // string and calculate the numerical ranges from the pattern.

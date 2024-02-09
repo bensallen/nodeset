@@ -6,6 +6,28 @@ import (
 	"testing"
 )
 
+func TestSplitOnComma(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected []string
+	}{
+		{"node[1-2],node[5-6]", []string{"node[1-2]", "node[5-6]"}},
+		{"a,b,c", []string{"a", "b", "c"}},
+		{"a[1,2],b[3,4],c", []string{"a[1,2]", "b[3,4]", "c"}},
+		{"[1,2],[3,4]", []string{"[1,2]", "[3,4]"}},
+		{"[1,2],3,4", []string{"[1,2]", "3", "4"}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			result := SplitOnComma(tc.input)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected %v, but got %v", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestExpand(t *testing.T) {
 	type args struct {
 		pattern string
@@ -37,6 +59,11 @@ func TestExpand(t *testing.T) {
 			name: "Range value",
 			args: args{pattern: "node[1-2]", iter: funcArg},
 			want: []string{"node1", "node2"},
+		},
+		{
+			name: "Multiple comma seperated ranges",
+			args: args{pattern: "node[1-2,5-6]", iter: funcArg},
+			want: []string{"node1", "node2", "node5", "node6"},
 		},
 		{
 			name:    "Empty pattern",
@@ -92,6 +119,13 @@ func Test_splitInput(t *testing.T) {
 			name: "No range",
 			args: args{input: "node1"},
 			want: [][]string{{"node1"}},
+		},
+		// splitInput doesn't have any capability of dealing with comma seperated node patterns
+		// use SplitOnComma as pre-processor for this.
+		{
+			name: "Two node no range",
+			args: args{input: "node1,node2"},
+			want: [][]string{{"node1,node2"}},
 		},
 		{
 			name: "No step, range value",

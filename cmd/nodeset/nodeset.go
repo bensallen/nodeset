@@ -10,21 +10,25 @@ import (
 
 func main() {
 
-	var pattern string
+	var patterns []string
 
-	flag.StringVarP(&pattern, "nodeset", "n", "", "nodeset pattern")
+	//flag.StringVarP(&pattern, "nodeset", "n", "", "nodeset pattern")
+	flag.StringArrayVarP(&patterns, "nodeset", "n", []string{}, "nodeset pattern")
 	flag.Parse()
 
-	if pattern == "" {
+	if len(patterns) == 0 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	printer := func(s string) error { fmt.Println(s); return nil }
-	err := nodeset.Expand(pattern, printer)
-	if err != nil {
-		fmt.Printf("Error expanding nodeset, %v.\n", err)
-		os.Exit(1)
+	for _, pattern := range patterns {
+		for _, splitPattern := range nodeset.SplitOnComma(pattern) {
+			printer := func(s string) error { fmt.Println(s); return nil }
+			err := nodeset.Expand(splitPattern, printer)
+			if err != nil {
+				fmt.Printf("Error expanding nodeset, %v.\n", err)
+				os.Exit(1)
+			}
+		}
 	}
-
 }
