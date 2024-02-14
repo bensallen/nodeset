@@ -391,3 +391,43 @@ func Test_parseStep(t *testing.T) {
 		})
 	}
 }
+
+/*
+	func TestNodeFold(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    []string
+			expected []string
+		}{
+			{
+				name:     "Multi-index range",
+				input:    []string{"a1b1n0", "a1b2n0", "a2b1n0", "a2b2n0", "a2b4n0", "c1", "c2", "d1", "e"},
+				expected: []string{"a[1-2]b[1-2,4]n0", "c[1-2]", "d1", "e"},
+			},
+			{
+				name:     "No range",
+				input:    []string{"a", "b", "c", "d0", "e1"},
+				expected: []string{"a", "b", "c", "d0", "e1"},
+			},
+			{
+				name:     "Mix of two ranges and no range",
+				input:    []string{"a0", "a1", "a2", "b3", "b4", "c"},
+				expected: []string{"a[0-2]", "b[3-4]", "c"},
+			},
+			{
+				name:     "Mix of two ranges and no range in the middle of strings",
+				input:    []string{"a0c", "a1c", "a2c", "b3c", "b4c", "d"},
+				expected: []string{"a[0-2]c", "b[3-4]c", "d"},
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				result := NodeFold(tc.input)
+				if !reflect.DeepEqual(result, tc.expected) {
+					t.Errorf("Expected %v, but got %v", tc.expected, result)
+				}
+			})
+		}
+	}
+*/
