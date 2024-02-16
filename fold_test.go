@@ -11,23 +11,6 @@ func TestFold(t *testing.T) {
 		input    []string
 		expected []string
 	}{
-		/*
-					{"0", "g"},
-			{"1", "g"},
-			{"j", "0001"},
-			{"h", "0001", "k"},
-			{"a", "0", "c"},
-			{"a", "1", "c"},
-			{"a", "2", "c"},
-			{"a", "4", "c"},
-			{"d"},
-			{"eh", "1", "f", "0"},
-			{"eh", "1", "f", "1"},
-			{"eh", "2", "f", "0"},
-			{"eh", "2", "f", "1"},
-			{"k", "01"},
-			{"k", "2"},
-		*/
 		{
 			name:     "No digits, single entry",
 			input:    []string{"a"},
@@ -39,7 +22,17 @@ func TestFold(t *testing.T) {
 			expected: []string{"[0-1]g"},
 		},
 		{
-			name:     "Range with step",
+			name:     "Trailing digits",
+			input:    []string{"g0", "g1"},
+			expected: []string{"g[0-1]"},
+		},
+		{
+			name:     "Duplicates",
+			input:    []string{"g1", "g1", "g01"},
+			expected: []string{"g1", "g01"},
+		},
+		{
+			name:     "Range with gap",
 			input:    []string{"a0c", "a1c", "a2c", "a4c"},
 			expected: []string{"a[0-2,4]c"},
 		},
@@ -54,15 +47,22 @@ func TestFold(t *testing.T) {
 			expected: []string{"eh[1-2]f[0-1]"},
 		},
 		{
-			name:     "Mixed padding, no range",
-			input:    []string{"k01", "k2"},
-			expected: []string{"k2", "k01"},
+			name:     "Digits increasing in length",
+			input:    []string{"k9", "k10"},
+			expected: []string{"k[9-10]"},
+		},
+		{
+			name:     "Mixed padding, folding not supported",
+			input:    []string{"k2", "k03", "k004"},
+			expected: []string{"k2", "k03", "k004"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := Fold(tc.input)
+			//slices.Sort[[]string](result)
+
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("Expected %v, but got %v", tc.expected, result)
 			}

@@ -1,6 +1,7 @@
 package nodeset
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strconv"
@@ -45,6 +46,9 @@ func Fold(inputs []string) []string {
 		}
 		output[groupIndex] = folded
 	}
+	slices.SortFunc(output, func(x, y string) int {
+		return -(cmp.Compare(x, y))
+	})
 	return output
 }
 
@@ -66,7 +70,6 @@ func splitOnDigits(s string) []string {
 			if foundChar {
 				parts = append(parts, s[startChar:i])
 				foundChar = false
-
 			}
 		} else {
 			if !foundChar {
@@ -93,7 +96,7 @@ func numericRange(input []int, padding int) ([]string, bool) {
 		return []string{}, false
 	}
 
-	slices.Sort[[]int](input)
+	slices.Sort(input)
 
 	var ranges []string
 	var bracket bool
@@ -143,22 +146,29 @@ func findMatchGroups(input [][]string) []MatchGroup {
 	positionMap := make(map[string]MatchGroup)
 
 	for _, slice := range input {
-		// Generate unique key using non-digit elements + length of digit elements
-		// length is included as different
+		// Generate unique key using non-digit elements + length of digit elements.
+		// Length is included to make comparing padded digits easier, at the expense of
+		// not being able to fold different length digits together.
 		key := ""
+		padding := false
+
 		for _, element := range slice {
 			_, err := strconv.Atoi(element)
 			if err != nil {
 				key += element
 			} else {
-				key += strconv.Itoa(len(element))
+				length := len(element)
+				if length > 1 && element[0] == '0' {
+					key += strconv.Itoa(length)
+					padding = true
+				}
 			}
 		}
 
 		// Check if a group with the same key exists
 		if group, ok := positionMap[key]; ok {
 			// Group exists, append the slice to the existing group
-			positionMap[key] = updatePositions(group, slice)
+			positionMap[key] = updatePositions(group, slice, padding)
 		} else {
 			// Group doesn't exist, create a new group
 			group := MatchGroup{
@@ -167,7 +177,7 @@ func findMatchGroups(input [][]string) []MatchGroup {
 				NonDigitPositions: make(map[int]string),
 				DigitPositions:    make(map[int]map[int]struct{}),
 			}
-			positionMap[key] = updatePositions(group, slice)
+			positionMap[key] = updatePositions(group, slice, padding)
 		}
 	}
 
@@ -179,7 +189,7 @@ func findMatchGroups(input [][]string) []MatchGroup {
 	return matchGroups
 }
 
-func updatePositions(group MatchGroup, slice []string) MatchGroup {
+func updatePositions(group MatchGroup, slice []string, padding bool) MatchGroup {
 	for i, element := range slice {
 		if val, err := strconv.Atoi(element); err == nil {
 			if _, ok := group.DigitPositions[i]; !ok {
@@ -187,7 +197,9 @@ func updatePositions(group MatchGroup, slice []string) MatchGroup {
 			}
 			if _, ok := group.DigitPositions[i][val]; !ok {
 				group.DigitPositions[i][val] = struct{}{}
-				group.DigitPadding[i] = len(element)
+				if padding {
+					group.DigitPadding[i] = len(element)
+				}
 			}
 		} else {
 			if group.NonDigitPositions[i] == "" {
