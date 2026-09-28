@@ -62,29 +62,33 @@ func Expand(pattern string, iter func(s string) error) error {
 		return err
 	}
 
-	// https://stackoverflow.com/a/29004530
-	lens := func(i int) int { return len(ranges[i]) }
+	// ix holds the current index into each dimension's value slice. A single
+	// strings.Builder is reused across iterations to avoid per-node slice and
+	// string allocations in the Cartesian walk.
+	ix := make([]int, len(ranges))
+	var b strings.Builder
 
-	for ix := make([]int, len(ranges)); ix[0] < lens(0); nextIndex(ix, lens) {
-		var r []string
+	for ix[0] < len(ranges[0]) {
+		b.Reset()
 		for j, k := range ix {
-			r = append(r, ranges[j][k])
+			b.WriteString(ranges[j][k])
 		}
-		err := iter(strings.Join(r, ""))
-		if err != nil {
+		if err := iter(b.String()); err != nil {
 			return err
 		}
+		nextIndex(ix, ranges)
 	}
 	return nil
 }
 
-// NextIndex sets ix to the lexicographically next value,
-// such that for each i>0, 0 <= ix[i] < lens(i).
-// https://stackoverflow.com/a/29004530
-func nextIndex(ix []int, lens func(i int) int) {
+// nextIndex advances ix to the next Cartesian combination, incrementing the
+// rightmost dimension first and carrying over into earlier dimensions. When
+// the highest combination is reached, ix[0] is left equal to len(ranges[0])
+// to terminate the caller's loop.
+func nextIndex(ix []int, ranges [][]string) {
 	for j := len(ix) - 1; j >= 0; j-- {
 		ix[j]++
-		if j == 0 || ix[j] < lens(j) {
+		if j == 0 || ix[j] < len(ranges[j]) {
 			return
 		}
 		ix[j] = 0
@@ -129,7 +133,13 @@ func splitInput(input string) ([][]string, error) {
 // parseRange takes a string in the form of [1], [1-2], or [1-4/2]
 // The returned range sets are deduplicated and numeric sorted.
 func parseRange(rangeStr string) ([]string, error) {
-	var rangeValues []string
+	// value pairs the numeric value with its zero-padding width so sorting and
+	// deduplication can operate on integers rather than re-parsing strings.
+	type value struct {
+		v       uint64
+		padding int
+	}
+	var values []value
 
 	// Remove brackets from the range string
 	if len(rangeStr) > 1 && rangeStr[0] == '[' && rangeStr[len(rangeStr)-1] == ']' {
@@ -155,7 +165,7 @@ func parseRange(rangeStr string) ([]string, error) {
 			if err != nil {
 				return []string{}, fmt.Errorf("range [%s], contains a single value that is not an integer", index)
 			}
-			rangeValues = append(rangeValues, strconv.FormatUint(val, 10))
+			values = append(values, value{v: val})
 		} else if len(rangeSplit) == 2 {
 			start, err := strconv.ParseUint(rangeSplit[0], 10, 64)
 			if err != nil {
@@ -188,19 +198,53 @@ func parseRange(rangeStr string) ([]string, error) {
 				step = 1
 			}
 
-			for i := start; i <= end; i += step {
-				rangeValues = append(rangeValues, fmt.Sprintf("%0*d", padding, i))
+			// Preallocate for this segment's values.
+			if cap(values)-len(values) < int((end-start)/step)+1 {
+				grown := make([]value, len(values), len(values)+int((end-start)/step)+1)
+				copy(grown, values)
+				values = grown
+			}
+			for i := start; ; i += step {
+				values = append(values, value{v: i, padding: padding})
+				// Stop before i += step would exceed end or overflow uint64.
+				// end - i cannot underflow here since i <= end always holds.
+				if end-i < step {
+					break
+				}
 			}
 		}
 	}
 
-	// Sort the values, safe to assume the strings are uint64 at this point
-	slices.SortStableFunc(rangeValues, func(a, b string) int {
-		an, _ := strconv.ParseUint(a, 10, 64)
-		bn, _ := strconv.ParseUint(b, 10, 64)
-		return cmp.Compare[uint64](an, bn)
+	// Sort numerically and deduplicate on the integer value before formatting,
+	// avoiding the need to re-parse formatted strings.
+	slices.SortStableFunc(values, func(a, b value) int {
+		return cmp.Compare(a.v, b.v)
 	})
-	return slices.Compact(rangeValues), nil
+	values = slices.CompactFunc(values, func(a, b value) bool {
+		return a.v == b.v && a.padding == b.padding
+	})
+
+	// Format the deduplicated values, padding once per value.
+	rangeValues := make([]string, len(values))
+	var b strings.Builder
+	var num [20]byte
+	for i, val := range values {
+		b.Reset()
+		writeUintPadded(&b, num[:], val.v, val.padding)
+		rangeValues[i] = b.String()
+	}
+	return rangeValues, nil
+}
+
+// writeUintPadded writes v to b, left-padded with zeros to at least width
+// digits. scratch is a caller-provided buffer (>= 20 bytes) reused to avoid
+// allocation.
+func writeUintPadded(b *strings.Builder, scratch []byte, v uint64, width int) {
+	digits := strconv.AppendUint(scratch[:0], v, 10)
+	for pad := width - len(digits); pad > 0; pad-- {
+		b.WriteByte('0')
+	}
+	b.Write(digits)
 }
 
 func parseStep(rangeStr string) (string, uint64, error) {

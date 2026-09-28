@@ -66,6 +66,23 @@ func TestExpand(t *testing.T) {
 			want: []string{"node1", "node2", "node5", "node6"},
 		},
 		{
+			name: "Range ending at uint64 max terminates without overflow",
+			args: args{pattern: "n[18446744073709551613-18446744073709551615]", iter: funcArg},
+			want: []string{
+				"n18446744073709551613",
+				"n18446744073709551614",
+				"n18446744073709551615",
+			},
+		},
+		{
+			name: "Stepped range near uint64 max stops before overflow",
+			args: args{pattern: "n[18446744073709551610-18446744073709551615/3]", iter: funcArg},
+			want: []string{
+				"n18446744073709551610",
+				"n18446744073709551613",
+			},
+		},
+		{
 			name:    "Empty pattern",
 			args:    args{pattern: "", iter: funcArg},
 			want:    []string{},
