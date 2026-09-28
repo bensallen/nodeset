@@ -145,42 +145,56 @@ func TestNodeString(t *testing.T) {
 	}
 }
 
-func TestSplitOnDigits(t *testing.T) {
+func TestSplitTokens(t *testing.T) {
 	testCases := []struct {
 		name     string
 		input    string
-		expected []string
+		expected node
 	}{
 		{
 			name:     "No digits",
 			input:    "a",
-			expected: []string{"a"},
+			expected: node{{literal: "a"}},
 		},
 		{
 			name:     "Leading digits",
 			input:    "0g",
-			expected: []string{"0", "g"},
+			expected: node{{isDigit: true, value: 0, width: 1}, {literal: "g"}},
 		},
 		{
 			name:     "Trailing multiple digits",
 			input:    "j0001",
-			expected: []string{"j", "0001"},
+			expected: node{{literal: "j"}, {isDigit: true, value: 1, width: 4}},
 		},
 		{
 			name:     "Multiple consective digits in middle",
 			input:    "j0001h",
-			expected: []string{"j", "0001", "h"},
+			expected: node{{literal: "j"}, {isDigit: true, value: 1, width: 4}, {literal: "h"}},
 		},
 		{
-			name:     "Multiple digit ranges",
-			input:    "eh1f0h0",
-			expected: []string{"eh", "1", "f", "0", "h", "0"},
+			name:  "Multiple digit ranges",
+			input: "eh1f0h0",
+			expected: node{
+				{literal: "eh"}, {isDigit: true, value: 1, width: 1},
+				{literal: "f"}, {isDigit: true, value: 0, width: 1},
+				{literal: "h"}, {isDigit: true, value: 0, width: 1},
+			},
+		},
+		{
+			name:     "Digit run overflowing uint64 kept as literal",
+			input:    "n18446744073709551616",
+			expected: node{{literal: "n"}, {literal: "18446744073709551616"}},
+		},
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: node{},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := splitOnDigits(tc.input)
+			result := splitTokens(tc.input)
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("Expected %v, but got %v", tc.expected, result)
 			}

@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 // token represents one component of a split node name. It is either a literal
@@ -327,45 +326,6 @@ func tokenCountHint(s string) int {
 		}
 	}
 	return count
-}
-
-// splitOnDigits splits an input string on any digits, where contigious charecters and digits are left together.
-// "ab1000c" -> []string{"ab", "1000", "c"}
-func splitOnDigits(s string) []string {
-	var parts []string
-	startChar := 0
-	startDigit := 0
-	foundChar := false
-	foundDigit := false
-
-	for i, char := range s {
-		if unicode.IsDigit(char) {
-			if !foundDigit {
-				startDigit = i
-				foundDigit = true
-			}
-			if foundChar {
-				parts = append(parts, s[startChar:i])
-				foundChar = false
-			}
-		} else {
-			if !foundChar {
-				startChar = i
-				foundChar = true
-			}
-			if foundDigit {
-				parts = append(parts, s[startDigit:i])
-				foundDigit = false
-			}
-		}
-	}
-	//Add any trailing digits or charecters
-	if foundDigit {
-		parts = append(parts, s[startDigit:])
-	} else if foundChar {
-		parts = append(parts, s[startChar:])
-	}
-	return parts
 }
 
 func numericRange(input []uint64, padding int) ([]string, bool) {
